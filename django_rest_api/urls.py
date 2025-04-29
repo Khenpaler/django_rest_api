@@ -60,8 +60,8 @@ urlpatterns = [
     path('api/auth/', include('apps.authentication.urls')),
     
     # Core application endpoints
-    path('api/employees/', include('apps.employees.urls')),
-    path('api/leaves/', include('apps.leaves.urls')),
+    path('api/', include('apps.employees.urls')),
+    path('api/', include('apps.leaves.urls')),
     
     # Django REST Framework authentication views
     path('api-auth/', include('rest_framework.urls')),

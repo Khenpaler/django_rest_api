@@ -1,6 +1,8 @@
 from rest_framework import viewsets, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import models
 from ..models import LeaveApproval
 from ..serializers import LeaveApprovalSerializer
 import logging
@@ -16,21 +18,52 @@ class LeaveApprovalViewSet(viewsets.ModelViewSet):
         try:
             queryset = LeaveApproval.objects.all()
             if not self.request.user.is_staff:
-                # Regular users can only see their own leave approvals
-                queryset = queryset.filter(leave__employee__user=self.request.user)
-            return queryset.select_related('leave', 'approver')
+                # Regular users can only see approvals where they are either the approver or the leave owner
+                queryset = queryset.filter(
+                    models.Q(approver=self.request.user) |
+                    models.Q(leave__employee__user=self.request.user)
+                )
+            return queryset.select_related('leave', 'approver', 'leave__employee')
         except Exception as e:
             logger.error(f"Error in get_queryset: {str(e)}")
             return LeaveApproval.objects.none()
 
     def create(self, request, *args, **kwargs):
         try:
-            # Set the approver to the current user
-            request.data['approver'] = request.user.id
+            data = {
+                'leave': request.data.get('leave'),
+                'comments': request.data.get('comments', ''),
+                # Always set approver to the current user
+                'approver': request.user.id
+            }
             
-            serializer = self.get_serializer(data=request.data)
+            serializer = self.get_serializer(data=data)
             if serializer.is_valid():
+                # Check if leave is already approved
+                leave = serializer.validated_data['leave']
+                if leave.status != 'pending':
+                    return Response({
+                        'message': f'Leave is already {leave.status}'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if approver is trying to approve their own leave
+                if leave.employee.user == request.user:
+                    return Response({
+                        'message': 'You cannot approve your own leave request'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Check if leave already has an approval
+                if LeaveApproval.objects.filter(leave=leave).exists():
+                    return Response({
+                        'message': 'Leave already has an approval'
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
                 self.perform_create(serializer)
+                
+                # Update leave status
+                leave.status = 'approved'
+                leave.save()
+
                 return Response({
                     'message': 'Leave approval created successfully',
                     'data': serializer.data
@@ -49,9 +82,17 @@ class LeaveApprovalViewSet(viewsets.ModelViewSet):
     def update(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
+            
+            # Only the approver or staff can update the approval
+            if not request.user.is_staff and instance.approver != request.user:
+                return Response({
+                    'message': 'You do not have permission to update this approval'
+                }, status=status.HTTP_403_FORBIDDEN)
+
             # Only allow updating comments
             if 'comments' in request.data:
-                serializer = self.get_serializer(instance, data={'comments': request.data['comments']}, partial=True)
+                data = {'comments': request.data['comments']}
+                serializer = self.get_serializer(instance, data=data, partial=True)
                 if serializer.is_valid():
                     self.perform_update(serializer)
                     return Response({
@@ -71,19 +112,54 @@ class LeaveApprovalViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
-            # Check if the user is the approver
-            if instance.approver != request.user and not request.user.is_staff:
+            
+            # Only staff can delete approvals
+            if not request.user.is_staff:
                 return Response({
-                    'message': 'You do not have permission to delete this approval'
+                    'message': 'Only staff members can delete approvals'
                 }, status=status.HTTP_403_FORBIDDEN)
-                
+
+            # Store approval info before deletion
+            approval_info = f"Approval for {instance.leave}"
+            
+            # Update leave status back to pending
+            leave = instance.leave
+            leave.status = 'pending'
+            leave.save()
+            
             self.perform_destroy(instance)
             return Response({
-                'message': 'Leave approval deleted successfully'
+                'message': f'{approval_info} deleted successfully'
             }, status=status.HTTP_200_OK)
         except Exception as e:
             logger.error(f"Error in destroy: {str(e)}")
             return Response({
                 'message': 'Error deleting leave approval',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            
+            # Check if user has permission to view this approval
+            if not request.user.is_staff and instance.approver != request.user and instance.leave.employee.user != request.user:
+                return Response({
+                    'message': 'You do not have permission to view this approval'
+                }, status=status.HTTP_403_FORBIDDEN)
+                
+            serializer = self.get_serializer(instance)
+            return Response({
+                'message': 'Leave approval retrieved successfully',
+                'data': serializer.data
+            })
+        except LeaveApproval.DoesNotExist:
+            return Response({
+                'message': 'Leave approval not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error in retrieve: {str(e)}")
+            return Response({
+                'message': 'Error retrieving leave approval',
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 

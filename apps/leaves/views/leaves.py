@@ -45,6 +45,31 @@ class LeaveViewSet(viewsets.ModelViewSet):
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    def retrieve(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            # Check if user has permission to view this leave
+            if not request.user.is_staff and instance.employee.user != request.user:
+                return Response({
+                    'message': 'You do not have permission to view this leave'
+                }, status=status.HTTP_403_FORBIDDEN)
+                
+            serializer = self.get_serializer(instance)
+            return Response({
+                'message': 'Leave retrieved successfully',
+                'data': serializer.data
+            })
+        except Leave.DoesNotExist:
+            return Response({
+                'message': 'Leave not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error in retrieve: {str(e)}")
+            return Response({
+                'message': 'Error retrieving leave',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def create(self, request, *args, **kwargs):
         try:
             # If user is not staff, set employee to current user's employee
@@ -72,6 +97,32 @@ class LeaveViewSet(viewsets.ModelViewSet):
             logger.error(f"Error in create: {str(e)}")
             return Response({
                 'message': 'Error creating leave',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def destroy(self, request, *args, **kwargs):
+        try:
+            instance = self.get_object()
+            # Check if user has permission to delete this leave
+            if not request.user.is_staff and instance.employee.user != request.user:
+                return Response({
+                    'message': 'You do not have permission to delete this leave'
+                }, status=status.HTTP_403_FORBIDDEN)
+
+            # Store leave info before deletion
+            leave_info = f"Leave for {instance.employee} ({instance.start_date} to {instance.end_date})"
+            self.perform_destroy(instance)
+            return Response({
+                'message': f'{leave_info} deleted successfully'
+            }, status=status.HTTP_200_OK)
+        except Leave.DoesNotExist:
+            return Response({
+                'message': 'Leave not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error in destroy: {str(e)}")
+            return Response({
+                'message': 'Error deleting leave',
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
