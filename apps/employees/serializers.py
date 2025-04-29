@@ -5,7 +5,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = '__all__'
-        read_only_fields = ('created_at', 'updated_at')
+        read_only_fields = ('created_at', 'updated_at', 'created_by')
 
     def validate_email(self, value):
         if not value or '@' not in value:
@@ -15,4 +15,8 @@ class EmployeeSerializer(serializers.ModelSerializer):
     def validate_salary(self, value):
         if value < 0:
             raise serializers.ValidationError("Salary cannot be negative.")
-        return value 
+        return value
+
+    def create(self, validated_data):
+        validated_data['created_by'] = self.context['request'].user
+        return super().create(validated_data) 

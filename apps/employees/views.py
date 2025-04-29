@@ -13,18 +13,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, IsAdminUser]
 
     def create(self, request, *args, **kwargs):
-        # Check if user already has an employee record
-        if hasattr(request.user, 'employee') and request.user.employee:
-            return Response({
-                'message': 'User already has an employee record',
-                'data': self.get_serializer(request.user.employee).data
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        # Add the current user to the data
-        data = request.data.copy()
-        data['user'] = request.user.id
-        
-        serializer = self.get_serializer(data=data)
+        serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             self.perform_create(serializer)
             return Response({
@@ -54,7 +43,7 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         try:
             instance = self.get_object()
-            employee_name = str(instance)  # Store the employee name before deletion
+            employee_name = str(instance)
             self.perform_destroy(instance)
             return Response({
                 'message': f'Employee {employee_name} deleted successfully'
