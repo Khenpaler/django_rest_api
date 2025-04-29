@@ -8,4 +8,4 @@ class LeaveApprovalSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveApproval
         fields = ['id', 'leave', 'approver', 'approver_details', 'comments', 'approved_at']
-        read_only_fields = ('approved_at', 'approver', 'approver_details') 
+        read_only_fields = ('approved_at', 'approver_details') 
