@@ -1,0 +1,64 @@
+[run]
+source = apps
+omit =
+    */migrations/*
+    */tests/*
+    */__pycache__/*
+    */admin.py
+    */apps.py
+    */urls.py
+    */wsgi.py
+    */asgi.py
+    */settings.py
+    */manage.py
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __str__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    self.assert
+    raise ImportError
+    raise NotImplemented
+    raise Exception
+    raise ValueError
+    raise TypeError
+    raise KeyError
+    raise AttributeError
+    raise IndexError
+    raise AssertionError
+    raise RuntimeError
+    raise OSError
+    raise IOError
+    raise FileNotFoundError
+    raise PermissionError
+    raise TimeoutError
+    raise ConnectionError
+    raise ConnectionRefusedError
+    raise ConnectionResetError
+    raise ConnectionAbortedError
+    raise BrokenPipeError
+    raise BlockingIOError
+    raise ChildProcessError
+    raise ProcessLookupError
+    raise InterruptedError
+    raise IsADirectoryError
+    raise NotADirectoryError
+    raise FileExistsError
+    raise FileNotFoundError
+    raise PermissionError
+    raise TimeoutError
+    raise ConnectionError
+    raise ConnectionRefusedError
+    raise ConnectionResetError
+    raise ConnectionAbortedError
+    raise BrokenPipeError
+    raise BlockingIOError
+    raise ChildProcessError
+    raise ProcessLookupError
+    raise InterruptedError
+    raise IsADirectoryError
+    raise NotADirectoryError
+    raise FileExistsError 
