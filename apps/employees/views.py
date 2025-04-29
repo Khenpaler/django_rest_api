@@ -41,11 +41,22 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         }, status=status.HTTP_400_BAD_REQUEST)
 
     def destroy(self, request, *args, **kwargs):
-        instance = self.get_object()
-        self.perform_destroy(instance)
-        return Response({
-            'message': 'Employee deleted successfully'
-        }, status=status.HTTP_200_OK)
+        try:
+            instance = self.get_object()
+            employee_name = str(instance)  # Store the employee name before deletion
+            self.perform_destroy(instance)
+            return Response({
+                'message': f'Employee {employee_name} deleted successfully'
+            }, status=status.HTTP_200_OK)
+        except Employee.DoesNotExist:
+            return Response({
+                'message': 'Employee not found'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'message': 'Error deleting employee',
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
 
     def retrieve(self, request, *args, **kwargs):
         instance = self.get_object()
