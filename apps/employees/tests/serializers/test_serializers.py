@@ -5,25 +5,31 @@ from apps.employees.models import Employee
 from apps.employees.serializers import EmployeeSerializer
 from ..factories import EmployeeFactory
 from apps.authentication.tests.factories import UserFactory
+from rest_framework.test import APIRequestFactory
 
 User = get_user_model()
 
 class EmployeeSerializerTest(TestCase):
     def setUp(self):
-        self.employee = EmployeeFactory()
+        self.user = UserFactory()
+        self.employee = EmployeeFactory(created_by=self.user)
         self.user2 = UserFactory()
         
         self.valid_data = {
-            'user': self.user2.id,
             'first_name': 'Jane',
             'last_name': 'Smith',
-            'email': self.user2.email,
+            'email': 'jane.smith@example.com',
             'phone': '555-123-4567',
             'department': 'Marketing',
             'position': 'Marketing Manager',
             'salary': 85000.00,
             'hire_date': '2023-02-01'
         }
+
+        # Create a request with the authenticated user
+        self.factory = APIRequestFactory()
+        self.request = self.factory.post('/')
+        self.request.user = self.user
 
     def test_serialization(self):
         serializer = EmployeeSerializer(self.employee)
@@ -39,9 +45,10 @@ class EmployeeSerializerTest(TestCase):
         self.assertEqual(data['hire_date'], self.employee.hire_date.strftime('%Y-%m-%d'))
         self.assertIn('created_at', data)
         self.assertIn('updated_at', data)
+        self.assertIn('created_by', data)
 
     def test_deserialization(self):
-        serializer = EmployeeSerializer(data=self.valid_data)
+        serializer = EmployeeSerializer(data=self.valid_data, context={'request': self.request})
         self.assertTrue(serializer.is_valid())
         
         employee = serializer.save()
@@ -53,6 +60,7 @@ class EmployeeSerializerTest(TestCase):
         self.assertEqual(employee.position, self.valid_data['position'])
         self.assertEqual(float(employee.salary), float(self.valid_data['salary']))
         self.assertEqual(employee.hire_date.strftime('%Y-%m-%d'), self.valid_data['hire_date'])
+        self.assertEqual(employee.created_by, self.user)
 
     def test_update(self):
         update_data = {
@@ -79,20 +87,20 @@ class EmployeeSerializerTest(TestCase):
         # Test invalid email
         invalid_data = self.valid_data.copy()
         invalid_data['email'] = 'invalid-email'
-        serializer = EmployeeSerializer(data=invalid_data)
+        serializer = EmployeeSerializer(data=invalid_data, context={'request': self.request})
         self.assertFalse(serializer.is_valid())
         self.assertIn('email', serializer.errors)
 
         # Test negative salary
         invalid_data = self.valid_data.copy()
         invalid_data['salary'] = -1000.00
-        serializer = EmployeeSerializer(data=invalid_data)
+        serializer = EmployeeSerializer(data=invalid_data, context={'request': self.request})
         self.assertFalse(serializer.is_valid())
         self.assertIn('salary', serializer.errors)
 
         # Test missing required field
         invalid_data = self.valid_data.copy()
         del invalid_data['first_name']
-        serializer = EmployeeSerializer(data=invalid_data)
+        serializer = EmployeeSerializer(data=invalid_data, context={'request': self.request})
         self.assertFalse(serializer.is_valid())
         self.assertIn('first_name', serializer.errors) 

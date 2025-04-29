@@ -10,24 +10,25 @@ User = get_user_model()
 
 class EmployeeModelTest(TestCase):
     def setUp(self):
-        self.employee = EmployeeFactory()
+        self.user = UserFactory()
+        self.employee = EmployeeFactory(created_by=self.user)
         self.user2 = UserFactory()
 
     def test_create_employee(self):
-        employee = EmployeeFactory()
+        employee = EmployeeFactory(created_by=self.user)
         self.assertIsNotNone(employee.pk)
-        self.assertIsNotNone(employee.user)
-        self.assertEqual(employee.email, employee.user.email)
+        self.assertIsNotNone(employee.created_by)
+        self.assertNotEqual(employee.email, employee.created_by.email)  # Email is now independent
 
-    def test_user_and_email_constraints(self):
-        # Try to create another employee with same user - should fail
+    def test_email_constraints(self):
+        # Try to create another employee with same email - should fail
         with self.assertRaises(ValidationError):
-            EmployeeFactory(user=self.employee.user)
+            EmployeeFactory(email=self.employee.email)
             
-        # Try to create employee with different user - should succeed
-        employee2 = EmployeeFactory(user=self.user2)
+        # Try to create employee with different email - should succeed
+        employee2 = EmployeeFactory(created_by=self.user2)
         self.assertIsNotNone(employee2.pk)
-        self.assertEqual(employee2.user, self.user2)
+        self.assertEqual(employee2.created_by, self.user2)
 
     def test_required_fields(self):
         # Test without required fields
@@ -35,33 +36,19 @@ class EmployeeModelTest(TestCase):
         
         for field in required_fields:
             # Create an employee instance but don't save it
-            employee = EmployeeFactory.build()
+            employee = EmployeeFactory.build(created_by=self.user)
             setattr(employee, field, None)
             
-            # Save the user first if it exists (to avoid related object validation error)
-            if employee.user and not employee.user.pk:
-                employee.user.save()
-                
             with self.assertRaises(ValidationError):
                 employee.full_clean()
-
-    def test_email_update_syncs_with_user(self):
-        # Update employee email
-        new_email = 'new.email@example.com'
-        self.employee.email = new_email
-        self.employee.save()
-        
-        # Check if user email was updated
-        self.employee.user.refresh_from_db()
-        self.assertEqual(self.employee.user.email, new_email)
 
     def test_string_representation(self):
         self.assertEqual(str(self.employee), f"{self.employee.first_name} {self.employee.last_name}")
 
     def test_ordering(self):
         # Create multiple employees
-        employee1 = EmployeeFactory()
-        employee2 = EmployeeFactory()
+        employee1 = EmployeeFactory(created_by=self.user)
+        employee2 = EmployeeFactory(created_by=self.user)
         
         # Check ordering
         employees = list(Employee.objects.all())

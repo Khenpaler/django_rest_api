@@ -13,16 +13,14 @@ class EmployeeViewSetTest(TestCase):
         self.client.force_authenticate(user=self.user)
         
         # Create some test employees
-        self.employees = [EmployeeFactory() for _ in range(3)]
+        self.employees = [EmployeeFactory(created_by=self.user) for _ in range(3)]
         self.employee = self.employees[0]
         
         # Create data for a new employee
-        self.new_user = UserFactory()
         self.valid_payload = {
-            'user': self.new_user.id,
             'first_name': 'Jane',
             'last_name': 'Smith',
-            'email': self.new_user.email,
+            'email': 'jane.smith@example.com',
             'phone': '555-123-4567',
             'department': 'Marketing',
             'position': 'Marketing Manager',
@@ -53,6 +51,9 @@ class EmployeeViewSetTest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['message'], 'Employee created successfully')
         self.assertEqual(Employee.objects.count(), len(self.employees) + 1)
+        # Verify created_by is set to the authenticated user
+        new_employee = Employee.objects.latest('created_at')
+        self.assertEqual(new_employee.created_by, self.user)
 
     def test_create_invalid_employee(self):
         invalid_payload = self.valid_payload.copy()

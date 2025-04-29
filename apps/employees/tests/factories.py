@@ -14,10 +14,10 @@ class EmployeeFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Employee
 
-    user = factory.SubFactory(UserFactory)
+    created_by = factory.SubFactory(UserFactory)
     first_name = factory.LazyAttribute(lambda _: fake.first_name())
     last_name = factory.LazyAttribute(lambda _: fake.last_name())
-    email = factory.LazyAttribute(lambda obj: obj.user.email)  # Use user's email by default
+    email = factory.LazyAttribute(lambda _: fake.email())
     phone = factory.LazyFunction(generate_phone)
     department = factory.LazyAttribute(lambda _: fake.job())
     position = factory.LazyAttribute(lambda _: fake.job())
