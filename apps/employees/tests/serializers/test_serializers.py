@@ -3,41 +3,22 @@ from django.contrib.auth import get_user_model
 from datetime import date
 from apps.employees.models import Employee
 from apps.employees.serializers import EmployeeSerializer
+from ..factories import EmployeeFactory
+from apps.authentication.tests.factories import UserFactory
 
 User = get_user_model()
 
 class EmployeeSerializerTest(TestCase):
     def setUp(self):
-        self.user1 = User.objects.create_user(
-            email='test1@example.com',
-            username='testuser1',
-            password='testpass123'
-        )
+        self.employee = EmployeeFactory()
+        self.user2 = UserFactory()
         
-        self.user2 = User.objects.create_user(
-            email='test2@example.com',
-            username='testuser2',
-            password='testpass123'
-        )
-        
-        self.employee = Employee.objects.create(
-            user=self.user1,
-            first_name='John',
-            last_name='Doe',
-            email='john.doe@example.com',
-            phone='1234567890',
-            department='Engineering',
-            position='Software Engineer',
-            salary=75000.00,
-            hire_date=date(2023, 1, 1)
-        )
-
         self.valid_data = {
-            'user': self.user2.id,  # Use different user for validation tests
+            'user': self.user2.id,
             'first_name': 'Jane',
             'last_name': 'Smith',
-            'email': 'jane.smith@example.com',
-            'phone': '0987654321',
+            'email': self.user2.email,
+            'phone': '555-123-4567',
             'department': 'Marketing',
             'position': 'Marketing Manager',
             'salary': 85000.00,
@@ -77,7 +58,7 @@ class EmployeeSerializerTest(TestCase):
         update_data = {
             'first_name': 'Updated',
             'last_name': 'Name',
-            'phone': '9999999999',
+            'phone': '999-999-9999',
             'department': 'Updated Department',
             'position': 'Updated Position',
             'salary': 90000.00
