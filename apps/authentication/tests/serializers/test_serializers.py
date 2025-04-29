@@ -2,19 +2,21 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.exceptions import ValidationError
 from apps.authentication.serializers import UserRegistrationSerializer, UserSerializer
+from ..factories import UserFactory
 
 User = get_user_model()
 
 class UserRegistrationSerializerTest(TestCase):
     def setUp(self):
+        self.user = UserFactory.build()
         self.valid_data = {
-            'email': 'test@example.com',
-            'username': 'testuser',
+            'email': self.user.email,
+            'username': self.user.username,
             'password': 'Testpass123!',
             'password2': 'Testpass123!',
-            'first_name': 'Test',
-            'last_name': 'User',
-            'phone': '1234567890'
+            'first_name': self.user.first_name,
+            'last_name': self.user.last_name,
+            'phone': self.user.phone
         }
 
     def test_valid_registration(self):
@@ -42,9 +44,16 @@ class UserRegistrationSerializerTest(TestCase):
         self.assertTrue(user.is_superuser)
 
         # Subsequent users should be employees
-        second_user_data = self.valid_data.copy()
-        second_user_data['email'] = 'second@example.com'
-        second_user_data['username'] = 'seconduser'
+        second_user = UserFactory.build()
+        second_user_data = {
+            'email': second_user.email,
+            'username': second_user.username,
+            'password': 'Testpass123!',
+            'password2': 'Testpass123!',
+            'first_name': second_user.first_name,
+            'last_name': second_user.last_name,
+            'phone': second_user.phone
+        }
         serializer = UserRegistrationSerializer(data=second_user_data)
         serializer.is_valid()
         user = serializer.save()
@@ -62,15 +71,7 @@ class UserRegistrationSerializerTest(TestCase):
 
 class UserSerializerTest(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user(
-            email='test@example.com',
-            username='testuser',
-            password='testpass123',
-            first_name='Test',
-            last_name='User',
-            phone='1234567890',
-            role='employee'
-        )
+        self.user = UserFactory()
 
     def test_serialization(self):
         serializer = UserSerializer(self.user)

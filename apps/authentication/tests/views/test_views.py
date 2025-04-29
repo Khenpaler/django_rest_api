@@ -4,6 +4,7 @@ from django.urls import reverse
 from rest_framework.test import APIClient
 from rest_framework import status
 from rest_framework_simplejwt.tokens import RefreshToken
+from ..factories import UserFactory
 
 User = get_user_model()
 
@@ -14,24 +15,18 @@ class AuthenticationViewsTest(TestCase):
         self.token_url = reverse('token_obtain_pair')
         self.profile_url = reverse('profile')
 
+        self.user = UserFactory.build()
         self.valid_registration_data = {
-            'email': 'test@example.com',
-            'username': 'testuser',
+            'email': self.user.email,
+            'username': self.user.username,
             'password': 'Testpass123!',
             'password2': 'Testpass123!',
-            'first_name': 'Test',
-            'last_name': 'User',
-            'phone': '1234567890'
+            'first_name': self.user.first_name,
+            'last_name': self.user.last_name,
+            'phone': self.user.phone
         }
 
-        self.user = User.objects.create_user(
-            email='existing@example.com',
-            username='existinguser',
-            password='Testpass123!',
-            first_name='Existing',
-            last_name='User',
-            phone='1234567890'
-        )
+        self.existing_user = UserFactory(password='Testpass123!')
 
     def test_user_registration(self):
         response = self.client.post(self.register_url, self.valid_registration_data)
@@ -48,7 +43,7 @@ class AuthenticationViewsTest(TestCase):
 
     def test_token_obtain_pair(self):
         login_data = {
-            'email': 'existing@example.com',
+            'email': self.existing_user.email,
             'password': 'Testpass123!'
         }
         response = self.client.post(self.token_url, login_data)
@@ -59,7 +54,7 @@ class AuthenticationViewsTest(TestCase):
 
     def test_token_obtain_pair_invalid_credentials(self):
         login_data = {
-            'email': 'existing@example.com',
+            'email': self.existing_user.email,
             'password': 'wrongpassword'
         }
         response = self.client.post(self.token_url, login_data)
@@ -67,17 +62,17 @@ class AuthenticationViewsTest(TestCase):
 
     def test_user_profile_retrieve(self):
         # Get token for authentication
-        refresh = RefreshToken.for_user(self.user)
+        refresh = RefreshToken.for_user(self.existing_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
 
         response = self.client.get(self.profile_url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(response.data['email'], self.user.email)
-        self.assertEqual(response.data['username'], self.user.username)
+        self.assertEqual(response.data['email'], self.existing_user.email)
+        self.assertEqual(response.data['username'], self.existing_user.username)
 
     def test_user_profile_update(self):
         # Get token for authentication
-        refresh = RefreshToken.for_user(self.user)
+        refresh = RefreshToken.for_user(self.existing_user)
         self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
 
         update_data = {
