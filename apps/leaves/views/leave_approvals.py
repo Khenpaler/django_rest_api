@@ -17,12 +17,9 @@ class LeaveApprovalViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         try:
             queryset = LeaveApproval.objects.all()
-            if not self.request.user.is_staff:
-                # Regular users can only see approvals where they are either the approver or the leave owner
-                queryset = queryset.filter(
-                    models.Q(approver=self.request.user) |
-                    models.Q(leave__employee__user=self.request.user)
-                )
+            if not self.request.user.is_admin():
+                # Regular users can only see their own leave approvals
+                queryset = queryset.filter(leave__employee__user=self.request.user)
             return queryset.select_related('leave', 'approver', 'leave__employee')
         except Exception as e:
             logger.error(f"Error in get_queryset: {str(e)}")
@@ -30,10 +27,15 @@ class LeaveApprovalViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         try:
+            # Only admins can create approvals
+            if not request.user.is_admin():
+                return Response({
+                    'message': 'Only admins can approve leaves'
+                }, status=status.HTTP_403_FORBIDDEN)
+
             data = {
                 'leave': request.data.get('leave'),
                 'comments': request.data.get('comments', ''),
-                # Always set approver to the current user
                 'approver': request.user.id
             }
             
@@ -44,12 +46,6 @@ class LeaveApprovalViewSet(viewsets.ModelViewSet):
                 if leave.status != 'pending':
                     return Response({
                         'message': f'Leave is already {leave.status}'
-                    }, status=status.HTTP_400_BAD_REQUEST)
-
-                # Check if approver is trying to approve their own leave
-                if leave.employee.user == request.user:
-                    return Response({
-                        'message': 'You cannot approve your own leave request'
                     }, status=status.HTTP_400_BAD_REQUEST)
 
                 # Check if leave already has an approval
@@ -83,10 +79,10 @@ class LeaveApprovalViewSet(viewsets.ModelViewSet):
         try:
             instance = self.get_object()
             
-            # Only the approver or staff can update the approval
-            if not request.user.is_staff and instance.approver != request.user:
+            # Only admin can update approvals
+            if not request.user.is_admin():
                 return Response({
-                    'message': 'You do not have permission to update this approval'
+                    'message': 'Only admins can update approvals'
                 }, status=status.HTTP_403_FORBIDDEN)
 
             # Only allow updating comments
@@ -113,10 +109,10 @@ class LeaveApprovalViewSet(viewsets.ModelViewSet):
         try:
             instance = self.get_object()
             
-            # Only staff can delete approvals
-            if not request.user.is_staff:
+            # Only admin can delete approvals
+            if not request.user.is_admin():
                 return Response({
-                    'message': 'Only staff members can delete approvals'
+                    'message': 'Only admins can delete approvals'
                 }, status=status.HTTP_403_FORBIDDEN)
 
             # Store approval info before deletion
@@ -143,7 +139,7 @@ class LeaveApprovalViewSet(viewsets.ModelViewSet):
             instance = self.get_object()
             
             # Check if user has permission to view this approval
-            if not request.user.is_staff and instance.approver != request.user and instance.leave.employee.user != request.user:
+            if not request.user.is_admin() and instance.leave.employee.user != request.user:
                 return Response({
                     'message': 'You do not have permission to view this approval'
                 }, status=status.HTTP_403_FORBIDDEN)
