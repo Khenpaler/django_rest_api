@@ -14,6 +14,16 @@ class LeaveViewSet(viewsets.ModelViewSet):
     serializer_class = LeaveSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        if getattr(self, 'swagger_fake_view', False):
+            return context
+        
+        # For browsable API, provide raw data
+        if self.request.accepted_renderer.format == 'api' or self.request.accepted_renderer.format == 'html':
+            context['response'] = self.get_object() if self.action in ['retrieve', 'update', 'partial_update'] else None
+        return context
+
     def get_queryset(self):
         try:
             queryset = Leave.objects.all()
@@ -34,6 +44,8 @@ class LeaveViewSet(viewsets.ModelViewSet):
         try:
             queryset = self.get_queryset()
             serializer = self.get_serializer(queryset, many=True)
+            if request.accepted_renderer.format in ['api', 'html']:
+                return Response(serializer.data)
             return Response({
                 'message': 'Leaves retrieved successfully',
                 'data': serializer.data
@@ -55,6 +67,8 @@ class LeaveViewSet(viewsets.ModelViewSet):
                 }, status=status.HTTP_403_FORBIDDEN)
                 
             serializer = self.get_serializer(instance)
+            if request.accepted_renderer.format in ['api', 'html']:
+                return Response(serializer.data)
             return Response({
                 'message': 'Leave retrieved successfully',
                 'data': serializer.data
@@ -85,6 +99,8 @@ class LeaveViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(data=request.data)
             if serializer.is_valid():
                 self.perform_create(serializer)
+                if request.accepted_renderer.format in ['api', 'html']:
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
                 return Response({
                     'message': 'Leave created successfully',
                     'data': serializer.data
@@ -97,6 +113,30 @@ class LeaveViewSet(viewsets.ModelViewSet):
             logger.error(f"Error in create: {str(e)}")
             return Response({
                 'message': 'Error creating leave',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def update(self, request, *args, **kwargs):
+        try:
+            partial = kwargs.pop('partial', False)
+            instance = self.get_object()
+            serializer = self.get_serializer(instance, data=request.data, partial=partial)
+            if serializer.is_valid():
+                self.perform_update(serializer)
+                if request.accepted_renderer.format in ['api', 'html']:
+                    return Response(serializer.data)
+                return Response({
+                    'message': 'Leave updated successfully',
+                    'data': serializer.data
+                })
+            return Response({
+                'message': 'Error updating leave',
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.error(f"Error in update: {str(e)}")
+            return Response({
+                'message': 'Error updating leave',
                 'error': str(e)
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

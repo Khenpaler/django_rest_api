@@ -3,11 +3,24 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from ..models import LeaveBalance
 from ..serializers import LeaveBalanceSerializer
+import logging
+
+logger = logging.getLogger(__name__)
 
 class LeaveBalanceViewSet(viewsets.ModelViewSet):
-    queryset = LeaveBalance.objects.all()  # Add default queryset
+    queryset = LeaveBalance.objects.all()
     serializer_class = LeaveBalanceSerializer
     permission_classes = [IsAuthenticated]
+
+    def get_renderer_context(self):
+        context = super().get_renderer_context()
+        if getattr(self, 'swagger_fake_view', False):
+            return context
+        
+        # For browsable API, provide raw data
+        if self.request.accepted_renderer.format == 'api' or self.request.accepted_renderer.format == 'html':
+            context['response'] = self.get_object() if self.action in ['retrieve', 'update', 'partial_update'] else None
+        return context
 
     def get_queryset(self):
         if not self.request.user.is_staff:
@@ -18,6 +31,8 @@ class LeaveBalanceViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
             self.perform_create(serializer)
+            if request.accepted_renderer.format in ['api', 'html']:
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
             return Response({
                 'message': 'Leave balance created successfully',
                 'data': serializer.data
@@ -33,6 +48,8 @@ class LeaveBalanceViewSet(viewsets.ModelViewSet):
             serializer = self.get_serializer(instance, data=request.data, partial=kwargs.get('partial', False))
             if serializer.is_valid():
                 self.perform_update(serializer)
+                if request.accepted_renderer.format in ['api', 'html']:
+                    return Response(serializer.data)
                 return Response({
                     'message': 'Leave balance updated successfully',
                     'data': serializer.data
@@ -42,10 +59,11 @@ class LeaveBalanceViewSet(viewsets.ModelViewSet):
                 'errors': serializer.errors
             }, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            logger.error(f"Error in update: {str(e)}")
             return Response({
                 'message': 'Error updating leave balance',
                 'error': str(e)
-            }, status=status.HTTP_400_BAD_REQUEST)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def destroy(self, request, *args, **kwargs):
         try:
@@ -70,6 +88,8 @@ class LeaveBalanceViewSet(viewsets.ModelViewSet):
         try:
             instance = self.get_object()
             serializer = self.get_serializer(instance)
+            if request.accepted_renderer.format in ['api', 'html']:
+                return Response(serializer.data)
             return Response({
                 'message': 'Leave balance retrieved successfully',
                 'data': serializer.data
@@ -78,11 +98,26 @@ class LeaveBalanceViewSet(viewsets.ModelViewSet):
             return Response({
                 'message': 'Leave balance not found'
             }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Error in retrieve: {str(e)}")
+            return Response({
+                'message': 'Error retrieving leave balance',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def list(self, request, *args, **kwargs):
-        queryset = self.filter_queryset(self.get_queryset())
-        serializer = self.get_serializer(queryset, many=True)
-        return Response({
-            'message': 'Leave balances retrieved successfully',
-            'data': serializer.data
-        })
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            serializer = self.get_serializer(queryset, many=True)
+            if request.accepted_renderer.format in ['api', 'html']:
+                return Response(serializer.data)
+            return Response({
+                'message': 'Leave balances retrieved successfully',
+                'data': serializer.data
+            })
+        except Exception as e:
+            logger.error(f"Error in list: {str(e)}")
+            return Response({
+                'message': 'Error retrieving leave balances',
+                'error': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
