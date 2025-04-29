@@ -21,14 +21,48 @@ from rest_framework_simplejwt.views import (
     TokenRefreshView,
 )
 from django.views.generic import RedirectView
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
+from rest_framework.reverse import reverse
+
+
+@api_view(['GET'])
+def api_root(request, format=None):
+    """
+    API root view that provides links to all main endpoints.
+    This serves as the entry point and documentation for the API.
+    """
+    return Response({
+        # Employee management endpoints
+        'employees': reverse('employee-list', request=request, format=format),
+        
+        # Leave management endpoints
+        'leave_types': reverse('leavetype-list', request=request, format=format),
+        'leaves': reverse('leave-list', request=request, format=format),
+        'leave_balances': reverse('leavebalance-list', request=request, format=format),
+        'leave_approvals': reverse('leaveapproval-list', request=request, format=format),
+    })
+
 
 urlpatterns = [
+    # Redirect root to API documentation
     path('', RedirectView.as_view(url='api/', permanent=False)),
+    
+    # Django admin interface
     path('admin/', admin.site.urls),
+    
+    # API root and documentation
+    path('api/', api_root, name='api-root'),
+    
+    # Authentication endpoints
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/auth/', include('apps.authentication.urls')),
-    path('api/', include('apps.employees.urls')),
-    path('api/', include('apps.leaves.urls')),
+    
+    # Core application endpoints
+    path('api/employees/', include('apps.employees.urls')),
+    path('api/leaves/', include('apps.leaves.urls')),
+    
+    # Django REST Framework authentication views
     path('api-auth/', include('rest_framework.urls')),
 ]
