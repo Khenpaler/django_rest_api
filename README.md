@@ -106,7 +106,7 @@ cd django_rest_api
 
 ```bash
 python -m venv env
-source env/bin/activate  # On Windows: env\Scripts\activate
+source env/bin/activate  # On Windows: env\Scripts\Activate.ps1
 ```
 
 ### 3. Install dependencies
