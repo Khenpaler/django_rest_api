@@ -5,6 +5,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from ..models import LeaveApproval
 from ..serializers import LeaveApprovalSerializer
+from ..middleware import EmployeeRolePermission
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 class LeaveApprovalViewSet(viewsets.ModelViewSet):
     queryset = LeaveApproval.objects.all()
     serializer_class = LeaveApprovalSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, EmployeeRolePermission]
 
     def get_renderer_context(self):
         context = super().get_renderer_context()

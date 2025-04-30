@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.exceptions import ObjectDoesNotExist
 from ..models import Leave, LeaveApproval
 from ..serializers import LeaveSerializer
+from ..middleware import EmployeeRolePermission
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 class LeaveViewSet(viewsets.ModelViewSet):
     queryset = Leave.objects.all()
     serializer_class = LeaveSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, EmployeeRolePermission]
 
     def get_renderer_context(self):
         context = super().get_renderer_context()
@@ -30,7 +31,7 @@ class LeaveViewSet(viewsets.ModelViewSet):
             if not self.request.user.is_staff:
                 # Get the employee associated with the current user
                 try:
-                    employee = self.request.user.employee
+                    employee = self.request.user.employee_profile
                     queryset = queryset.filter(employee=employee)
                 except ObjectDoesNotExist:
                     logger.error(f"No employee record found for user {self.request.user.id}")
@@ -89,14 +90,17 @@ class LeaveViewSet(viewsets.ModelViewSet):
             # If user is not staff, set employee to current user's employee
             if not request.user.is_staff:
                 try:
-                    employee = request.user.employee
-                    request.data['employee'] = employee.id
+                    employee = request.user.employee_profile
+                    data = request.data.copy()
+                    data['employee'] = employee.id
                 except ObjectDoesNotExist:
                     return Response({
                         'message': 'No employee record found for current user',
                     }, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                data = request.data
 
-            serializer = self.get_serializer(data=request.data)
+            serializer = self.get_serializer(data=data)
             if serializer.is_valid():
                 self.perform_create(serializer)
                 if request.accepted_renderer.format in ['api', 'html']:
@@ -169,7 +173,7 @@ class LeaveViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def my_leaves(self, request):
         try:
-            employee = request.user.employee
+            employee = request.user.employee_profile
             leaves = self.get_queryset().filter(employee=employee)
             serializer = self.get_serializer(leaves, many=True)
             return Response({
