@@ -144,8 +144,17 @@ python manage.py runserver
 
 ### Authentication
 
+#### Token Management
 - `POST /api/token/` — Obtain JWT token
 - `POST /api/token/refresh/` — Refresh JWT token
+
+#### User Authentication
+- `POST /api/auth/register/` — Register a new user
+- `POST /api/auth/login/` — Login and obtain JWT tokens
+- `POST /api/auth/logout/` — Logout and invalidate refresh token
+- `GET /api/auth/profile/` — Get current user profile
+- `PUT /api/auth/profile/` — Update current user profile
+- `PATCH /api/auth/profile/` — Partially update current user profile
 
 ### Employees
 
