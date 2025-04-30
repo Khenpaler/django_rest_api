@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import LeaveType, Leave, LeaveApproval, LeaveBalance
+from .models import LeaveType, Leave, LeaveApproval
 
 @admin.register(LeaveType)
 class LeaveTypeAdmin(admin.ModelAdmin):
@@ -17,9 +17,3 @@ class LeaveAdmin(admin.ModelAdmin):
 class LeaveApprovalAdmin(admin.ModelAdmin):
     list_display = ('leave', 'approver', 'approved_at')
     search_fields = ('leave__employee__first_name', 'leave__employee__last_name', 'comments')
-
-@admin.register(LeaveBalance)
-class LeaveBalanceAdmin(admin.ModelAdmin):
-    list_display = ('employee', 'leave_type', 'total_days', 'used_days', 'remaining_days', 'year')
-    list_filter = ('year', 'leave_type')
-    search_fields = ('employee__first_name', 'employee__last_name')

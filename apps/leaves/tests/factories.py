@@ -1,7 +1,7 @@
 import factory
 from faker import Faker
 from datetime import date, timedelta
-from ..models import Leave, LeaveType, LeaveBalance
+from ..models import Leave, LeaveType
 from apps.employees.tests.factories import EmployeeFactory
 
 fake = Faker()
@@ -23,14 +23,4 @@ class LeaveFactory(factory.django.DjangoModelFactory):
     start_date = factory.LazyAttribute(lambda _: fake.date_between(start_date='-30d', end_date='+30d'))
     end_date = factory.LazyAttribute(lambda obj: obj.start_date + timedelta(days=fake.random_int(min=1, max=5)))
     reason = factory.LazyAttribute(lambda _: fake.text())
-    status = factory.LazyAttribute(lambda _: fake.random_element(elements=('pending', 'approved', 'rejected', 'cancelled')))
-
-class LeaveBalanceFactory(factory.django.DjangoModelFactory):
-    class Meta:
-        model = LeaveBalance
-
-    employee = factory.SubFactory(EmployeeFactory)
-    leave_type = factory.SubFactory(LeaveTypeFactory)
-    total_days = factory.LazyAttribute(lambda _: fake.random_int(min=10, max=30))
-    used_days = factory.LazyAttribute(lambda _: fake.random_int(min=0, max=10))
-    year = factory.LazyAttribute(lambda _: fake.random_int(min=2020, max=2024)) 
+    status = factory.LazyAttribute(lambda _: fake.random_element(elements=('pending', 'approved', 'rejected', 'cancelled'))) 

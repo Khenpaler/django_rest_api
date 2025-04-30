@@ -24,6 +24,8 @@ from django.views.generic import RedirectView
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.reverse import reverse
+from rest_framework.routers import DefaultRouter
+from apps.leaves.views import LeaveTypeViewSet, LeaveViewSet, LeaveApprovalViewSet
 
 
 @api_view(['GET'])
@@ -39,10 +41,14 @@ def api_root(request, format=None):
         # Leave management endpoints
         'leave_types': reverse('leavetype-list', request=request, format=format),
         'leaves': reverse('leave-list', request=request, format=format),
-        'leave_balances': reverse('leavebalance-list', request=request, format=format),
         'leave_approvals': reverse('leaveapproval-list', request=request, format=format),
     })
 
+
+router = DefaultRouter()
+router.register(r'leave_types', LeaveTypeViewSet)
+router.register(r'leaves', LeaveViewSet)
+router.register(r'leave_approvals', LeaveApprovalViewSet)
 
 urlpatterns = [
     # Redirect root to API documentation
@@ -61,7 +67,7 @@ urlpatterns = [
     
     # Core application endpoints
     path('api/', include('apps.employees.urls')),
-    path('api/', include('apps.leaves.urls')),
+    path('api/', include(router.urls)),
     
     # Django REST Framework authentication views
     path('api-auth/', include('rest_framework.urls')),
